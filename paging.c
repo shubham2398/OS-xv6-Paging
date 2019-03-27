@@ -37,7 +37,13 @@ swap_page(pde_t *pgdir)
 void
 map_address(pde_t *pgdir, uint addr)
 {
-	panic("map_address is not implemented");
+	char *mem = kalloc();
+	memset(mem, 0, PGSIZE);
+    if(mappages(pgdir, (char*)addr, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0){
+      // printf("allocuvm out of memory (2)\n");
+      kfree(mem);
+      panic("allocation = 0 in walk pgdir");
+    }
 }
 
 /* page fault handler */
