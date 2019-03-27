@@ -98,6 +98,12 @@ bget(uint dev, uint blockno)
 void
 write_page_to_disk(uint dev, char *pg, uint blk)
 {
+  struct buf *bp;
+  for(int i=0;i<8;i++){
+    bp = bread(dev,blk+i);
+    memmove(bp->data,pg+i*BSIZE,BSIZE);
+    brelse(bp);
+  }
 }
 
 /* Read 4096 bytes from the eight consecutive
@@ -106,6 +112,12 @@ write_page_to_disk(uint dev, char *pg, uint blk)
 void
 read_page_from_disk(uint dev, char *pg, uint blk)
 {
+  struct buf *bp;
+  for(int i=0;i<8;i++){
+    bp=bread(dev,blk+i);
+    memmove(pg+i*BSIZE,bp->data,BSIZE);
+    brelse(bp);
+  }
 }
 
 // Return a locked buf with the contents of the indicated block.

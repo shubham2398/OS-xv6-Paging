@@ -69,9 +69,10 @@ mappages(pde_t *pgdir, void *va, uint size, uint pa, int perm)
   last = (char*)PGROUNDDOWN(((uint)va) + size - 1);
   for(;;){
     if((pte = walkpgdir(pgdir, a, 1)) == 0)
-      return -1;
+      return -2;
     if(*pte & PTE_P)
-      panic("remap");
+      return -2;
+      //panic("remap");
     *pte = pa | perm | PTE_P;
     if(a == last)
       break;
@@ -307,13 +308,45 @@ freevm(pde_t *pgdir)
 pte_t*
 select_a_victim(pde_t *pgdir)
 {
-	return 0;
+	for(;;) {
+    int total_user_pages = 0;
+    for(int i = 0; i < NPDENTRIES; i++){
+      if((pgdir[i] & PTE_U) && (pgdir[i] & PTE_P)) {
+        total_user_pages += 1;
+        if(!(pgdir[i] & PTE_A)) {
+          return &pgdir[i];
+        }
+      }
+    }
+    
+    int reset = total_user_pages*0.1;
+    if(reset == 0)
+      reset = 1;
+
+    while(reset) {
+      clearaccessbit(pgdir);
+      reset--;
+    }
+  }
 }
 
 // Clear access bit of a random pte.
 void
 clearaccessbit(pde_t *pgdir)
 {
+  int cnt = 0;
+  for(int i = 0; i < NPDENTRIES; i++) {
+    if((pgdir[i] & PTE_U) && (pgdir[i] & PTE_P))
+      cnt += 1;
+  }
+  
+  for(;;) {
+    int random_pg = ticks % cnt;
+    if((pgdir[random_pg] & PTE_A) && (pgdir[random_pg] & PTE_P)) {
+      pgdir[random_pg] &= ~PTE_A;
+      break;
+    }
+  }
 }
 
 // return the disk block-id, if the virtual address
@@ -321,7 +354,13 @@ clearaccessbit(pde_t *pgdir)
 int
 getswappedblk(pde_t *pgdir, uint va)
 {
-  return -1;
+  pte_t *pte;
+  if((pte = walkpgdir(pgdir, &va, 0))==0)
+    return -1;
+  else if((*pte) & PTE_S)
+    return (*pte)>>12;
+  else 
+    return -1;
 }
 
 // Clear PTE_U on a page. Used to create an inaccessible

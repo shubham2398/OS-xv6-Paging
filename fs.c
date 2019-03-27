@@ -84,15 +84,15 @@ balloc(uint dev)
  */
 uint
 balloc_page(uint dev)
-{
-	return -1;
-}
-
-/* Free disk blocks allocated using balloc_page.
- */
-void
-bfree_page(int dev, uint b)
-{
+{ begin_op();
+  uint bno;
+  bno = balloc(dev);
+  for(int i=0;i<7;i++){
+    if(balloc(dev)!=bno+i+1)
+      panic("balloc_page: Unconsecutive pages allocated");
+  }
+  end_op();
+	return bno;
 }
 
 // Free a disk block.
@@ -111,6 +111,17 @@ bfree(int dev, uint b)
   bp->data[bi/8] &= ~m;
   log_write(bp);
   brelse(bp);
+}
+
+/* Free disk blocks allocated using balloc_page.
+ */
+void
+bfree_page(int dev, uint b)
+{ begin_op();
+  for(int i=0;i<8;i++){
+    bfree(dev,b+i);
+  }
+  end_op();
 }
 
 // Inodes.
