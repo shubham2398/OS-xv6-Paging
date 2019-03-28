@@ -17,35 +17,17 @@
  */
 void
 swap_page_from_pte(pte_t *pte)
-{	uint bno = balloc_page(1);
-	uint pa = PTE_ADDR(*pte);
-	*pte &= ~PTE_P;
-	write_page_to_disk(1,P2V(pa),bno);
-	*pte = bno<<12 | PTE_S;
-	pa = P2V(pa);
-	//asm volatile ("invlpgl %0 \n\t" : : :"=r");
-}
-
-pte_t *
-walkpgdir(pde_t *pgdir, const void *va, int alloc)
 {
-  pde_t *pde;
-  pte_t *pgtab;
+  uint bno = balloc_page(1);
+	uint pa = PTE_ADDR(*pte);
+	write_page_to_disk(1, P2V(pa), bno);
+  *pte &= ~PTE_P;
+	*pte = bno<<12 | PTE_S;
+  kfree(P2V(pa));
 
-  pde = &pgdir[PDX(va)];
-  if(*pde & PTE_P){
-    pgtab = (pte_t*)P2V(PTE_ADDR(*pde));
-  } else {
-    if(!alloc || (pgtab = (pte_t*)kalloc()) == 0)
-      return 0;
-    // Make sure all those PTE_P bits are zero.
-    memset(pgtab, 0, PGSIZE);
-    // The permissions here are overly generous, but they can
-    // be further restricted by the permissions in the page table
-    // entries, if necessary.
-    *pde = V2P(pgtab) | PTE_P | PTE_W | PTE_U;
-  }
-  return &pgtab[PTX(va)];
+  //char* v = P2V(KERNBASE);
+	// asm volatile(" invlpg %0 ": : "r"(*pte) );
+  //asm volatile("invlpg [%0]" :: "r" (*v));
 }
 
 /* Select a victim and swap the contents to the disk.
@@ -54,7 +36,7 @@ int
 swap_page(pde_t *pgdir)
 {
 	pte_t* pte= select_a_victim(pgdir);
-    swap_page_from_pte(pte);
+  swap_page_from_pte(pte);
 	return 1;
 }
 
@@ -67,23 +49,34 @@ void
 map_address(pde_t *pgdir, uint addr)
 {
 	char *mem = kalloc();
-    memset(mem, 0, PGSIZE);
-    int status = mappages(pgdir, (char*)addr, PGSIZE, V2P(mem), PTE_W|PTE_U);
-    if(status == -2){
-      swap_page(pgdir);
-      pte_t *pte = walkpgdir(pgdir, &addr, 1);
-      if(*pte==0) panic("fuck");
-      if((*pte) & PTE_S){
-		uint bno = (*pte)>>12;
-		read_page_from_disk(1,P2V(PTE_ADDR(*pte)),bno);
-		}
-      // panic("swap error");
-    } else if(status<0) {
-      // printf("allocuvm out of memory (2)\n");
-    panic("bla");
-      kfree(mem);
-      panic("allocation = 0 in walk pgdir");
-    }
+  int cnt = 0;
+  while(mem == 0) {
+    cnt += 1;
+    swap_page(pgdir);
+    mem = kalloc();
+    if(cnt > 3)
+      panic("tumse na ho paayega");
+  }
+
+  memset(mem, 0, PGSIZE);
+  int cnt2 = 0;
+  
+  while (mappages(pgdir, (char*)addr, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0) {
+    cnt2 += 1;
+    if(cnt2>15)
+      panic("stop");
+    swap_page(pgdir);
+
+    // return;
+  }
+
+  uint bno;
+  bno = getswappedblk(pgdir, addr);
+  if(bno != -1){
+    pte_t *pte = walkpgdir(pgdir, &addr, 0);
+    read_page_from_disk(1, P2V(PTE_ADDR(*pte)), bno);
+  }
+
 }
 
 /* page fault handler */
