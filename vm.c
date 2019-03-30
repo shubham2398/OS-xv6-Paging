@@ -312,13 +312,20 @@ select_a_victim(pde_t *pgdir)
   //     return &pgdir[i];
   // }
   // return 0;
-	for(;;) {
+  for(;;) {
     int total_user_pages = 0;
-    for(int i = 0; i < NPDENTRIES; i++){
-      if((pgdir[i] & PTE_U) && (pgdir[i] & PTE_P)) {
-        total_user_pages += 1;
-        if(!(pgdir[i] & PTE_A)) {
-          return &pgdir[i];
+    for(int i=0; i<NPDENTRIES; i++) {
+      pde_t* pde = (pde_t *)pgdir[i];
+      if(*pde & PTE_P){
+        for(int j = 0; j < NPTENTRIES; j++){
+          pte_t* pte = (pte_t *)pde[j];
+          if((*pte & PTE_U) && (*pte & PTE_P)) {
+            total_user_pages += 1;
+            //if(!(*pte & PTE_A)) {
+              //cprintf("Victim: %x\n",P2V(PTE_ADDR(*pte)));
+              return pte;
+            //}
+          }
         }
       }
     }
@@ -339,17 +346,20 @@ void
 clearaccessbit(pde_t *pgdir)
 {
   for(;;) {
-    int flag = 0;
     for(int i=0; i<NPDENTRIES; i++) {
-      if((pgdir[i] & PTE_U) && (pgdir[i] & PTE_P)) {
-        pgdir[i] &= ~PTE_A;
-        flag = 1;
-        break;
+      pde_t* pde = (pde_t *)pgdir[i];
+      if(*pde & PTE_P){
+        for(int j = 0; j < NPTENTRIES; j++){
+          pte_t* pte = (pte_t *)pde[j];
+          if((*pte & PTE_U) && (*pte & PTE_P)) {
+            *pte &= ~PTE_A;
+            return;
+          }
+        }
       }
     }
-    if(flag)
-      break;
   }
+
   // int cnt = 0;
   // for(int i = 0; i < NPDENTRIES; i++) {
   //   if((pgdir[i] & PTE_U) && (pgdir[i] & PTE_P))
@@ -371,11 +381,14 @@ int
 getswappedblk(pde_t *pgdir, uint va)
 {
   pte_t *pte;
-  if((pte = walkpgdir(pgdir, &va, 0))==0){
+  if((pte = walkpgdir(pgdir, (char*)va, 0))==0){
+    return -1;
+    cprintf("va in getswappedblk %x\n", va);
     panic("getswappedblk: address should be mapped");
   }
-  else if((*pte) & PTE_S)
+  else if((*pte) & PTE_S) {
     return (*pte)>>12;
+  }
   else 
     return -1;
 }

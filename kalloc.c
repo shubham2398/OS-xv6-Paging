@@ -61,15 +61,12 @@ kfree(char *v)
 {
   struct run *r;
 
-  if((uint)v % PGSIZE) 
-    panic("vdd");
-  if(V2P(v) >= PHYSTOP)
-    panic("dumb");
-  if(v < end)
-    panic("dkjkda"); 
+  if((uint)v % PGSIZE || v < end || V2P(v) >= PHYSTOP)
+    panic("kfree");
 
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
+  // cprintf("memset was successfull\n");
 
   if(kmem.use_lock)
     acquire(&kmem.lock);
