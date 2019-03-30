@@ -61,8 +61,7 @@ swap_page(pde_t *pgdir)
 
 void
 map_address(pde_t *pgdir, uint addr)
-{ 
-
+{
   char *mem;
   if(addr >= KERNBASE)
     panic("user not allowed");
@@ -85,6 +84,7 @@ map_address(pde_t *pgdir, uint addr)
   // addr = PGROUNDDOWN((uint)addr);
   // cprintf("exec\n");
   if(mappages(pgdir, (char*)addr, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0) {
+    panic("page table required");
     cprintf("addr in MA= %x\n", addr);
     swap_page(pgdir);
     // needed because top 10 bits of addr may point to some pde which does not exist
@@ -92,44 +92,65 @@ map_address(pde_t *pgdir, uint addr)
       panic("why do mappages require more page?");
     }
   }
-  
-}
-// void
-// map_address(pde_t *pgdir, uint addr)
-// {
-// 	char *mem = kalloc();
-//   int cnt = 0;
-//   while(mem == 0) {
-//     cnt += 1;
-//     swap_page(pgdir);
-//     mem = kalloc();
-//     if(mem == 0)
-//       panic("seriously");
-//     if(cnt > 3)
-//       panic("tumse na ho paayega");
+
+//   cprintf("\nVA %d\n",addr);
+//   pte_t *pte;
+//   pte = walkpgdir(pgdir, (char*)addr, 1);
+//   cprintf("pte value%d\n",*pte);
+//   if((*pte & PTE_S)==1 && (*pte & PTE_P)==0)
+//   {
+//     //panic("pte is 1");
+//     int blk = getswappedblk(pgdir, addr);
+//     char buffer[PGSIZE]="";
+//     cprintf("BLK %d\n", blk);
+//     read_page_from_disk(ROOTDEV, buffer, blk);
+//     char *kva;
+//     kva = kalloc();
+//     if(kva==0)  
+//     {
+//       int b = swap_page(pgdir);
+//       if(b!=1)
+//         panic("Problem in swapping");
+//       kva = kalloc();
+//       if(kva == 0)
+//         panic("PROBLEM"); 
+//       memmove(kva , buffer, PGSIZE);
+//       *pte =  V2P(kva) | PTE_P | PTE_W | PTE_U ;
+//       bfree_page(ROOTDEV, blk);
+//     }
+//     else
+//     {
+//       memmove(kva , buffer, PGSIZE);
+//       *pte =  V2P(kva) | PTE_P | PTE_W | PTE_U ;
+//       bfree_page(ROOTDEV, blk);
+//       return ;
+//     }
 //   }
-
-//   memset(mem, 0, PGSIZE);
-//   int cnt2 = 0;
-  
-//   while (mappages(pgdir, (char*)addr, PGSIZE, V2P(mem), PTE_W|PTE_U) < 0) {
-//     cnt2 += 1;
-//     if(cnt2>2)
-//       panic("stop");
-//     swap_page(pgdir);
-
-//     // return;
-//   }
-
-//   uint bno;
-//   bno = getswappedblk(pgdir, addr);
-//   if(bno != -1){
-//     panic("zcxv");
-//     pte_t *pte = walkpgdir(pgdir, &addr, 0);
-//     read_page_from_disk(1, P2V(PTE_ADDR(*pte)), bno);
-//   }
-
+//   else
+//   { 
+//     char *kva;
+//     kva = kalloc();
+//     if(kva==0)  
+//     {
+//       int b = swap_page(pgdir);
+//       if(b!=1)
+//         panic("Sys_swap me gadbad");
+//       kva = kalloc();
+//       if(kva == 0)
+//         panic("PROBLEM"); 
+//       memset(kva,0,PGSIZE);
+//       *pte =  V2P(kva) | PTE_P | PTE_W | PTE_U ;
+//       cprintf("pte value%d\n",*pte);
+//       cprintf("New entry set\n");
+//     }
+//     else
+//     {
+//     memset(kva,0,PGSIZE);
+//     *pte = V2P(kva) | PTE_P | PTE_W | PTE_U ;
+//     cprintf("pte value%d\n",*pte);
+//     }
 // }
+}
 
 /* page fault handler */
 void

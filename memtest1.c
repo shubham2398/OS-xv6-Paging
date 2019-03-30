@@ -12,8 +12,8 @@ char buf[8192];
 char name[3];
 char *echoargv[] = { "echo", "ALL", "TESTS", "PASSED", 0 };
 int stdout = 1;
-//#define TOTAL_MEMORY 2473984 - 1*4096
-#define TOTAL_MEMORY (2 << 20) + (1 << 18) + (1 << 17)
+#define TOTAL_MEMORY 2473984 - 1*4096
+// #define TOTAL_MEMORY (2 << 20) + (1 << 18) + (1 << 17)
 
 void
 mem(void)
@@ -52,7 +52,7 @@ mem(void)
 
 	while (count != total_count) {
 		if (((int*)m1)[2] != count)
-		printf(1, "expected = %d, present val = %d\n", count, ((int*)m1)[2]);
+			printf(1, "expected = %d, present val = %d\n", count, ((int*)m1)[2]);
 
 			//goto failed;
 		m1 = *(char**)m1;
