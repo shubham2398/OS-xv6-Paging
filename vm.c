@@ -278,6 +278,15 @@ deallocuvm(pde_t *pgdir, uint oldsz, uint newsz)
       kfree(v);
       *pte = 0;
     }
+    else if((*pte & PTE_S)){
+      uint bno;
+      if((bno = getswappedblk(pgdir, a))==-1)
+        panic("deallocuvm: page swapped but block not found error!");
+      begin_op();
+      bfree_page(1,bno);
+      end_op();
+      *pte = 0;
+    }
   }
   return newsz;
 }
@@ -311,7 +320,7 @@ select_a_victim(pde_t *pgdir)
   pte_t* pte;
   for(int i=0; i<KERNBASE - PGSIZE; i+= PGSIZE) {
     if((pte = walkpgdir(pgdir, (char*) i, 0)) != 0) {
-      total_pages += 1;
+      if(*pte & PTE_P) total_pages += 1;
       if((*pte & PTE_P) && !(*pte & PTE_A)) {
         return pte;
       }
@@ -397,12 +406,20 @@ copyuvm(pde_t *pgdir, uint sz)
   for(i = 0; i < sz; i += PGSIZE){
     if((pte = walkpgdir(pgdir, (void *) i, 0)) == 0)
       panic("copyuvm: pte should exist");
-    if(!(*pte & PTE_P))
-      panic("copyuvm: page not present");
+    if(!(*pte & PTE_P)){
+      if(!(*pte & PTE_S))
+        panic("copyuvm: page not present");
+      else{
+        map_address(pgdir,i);
+      }
+    }
     pa = PTE_ADDR(*pte);
     flags = PTE_FLAGS(*pte);
-    if((mem = kalloc()) == 0)
-      goto bad;
+    if((mem = kalloc()) == 0){
+      swap_page(pgdir);
+      if((mem=kalloc()) == 0)
+        goto bad;
+    }
 
     memmove(mem, (char*)P2V(pa), PGSIZE);
     if(mappages(d, (void*)i, PGSIZE, V2P(mem), flags) < 0)

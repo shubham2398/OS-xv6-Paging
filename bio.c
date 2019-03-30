@@ -102,6 +102,7 @@ write_page_to_disk(uint dev, char *pg, uint blk)
   for(int i=0;i<8;i++){
     bp = bread(dev,blk+i);
     memmove(bp->data,pg+i*BSIZE,BSIZE);
+    bwrite(bp);
     brelse(bp);
   }
 }

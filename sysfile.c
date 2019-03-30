@@ -461,9 +461,13 @@ int
 sys_swap(void)
 {
   uint addr;
+  struct proc *curproc = myproc();  
 
   if(argint(0, (int*)&addr) < 0)
     return -1;
-  // swap addr
+  pte_t* pte=walkpgdir(curproc->pgdir,(void *)addr,0);
+  if(pte==0)
+    panic("sys_swap:No page allocated at the given VA");
+  swap_page_from_pte(pte);
   return 0;
 }
