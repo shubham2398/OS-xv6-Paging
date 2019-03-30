@@ -307,72 +307,47 @@ freevm(pde_t *pgdir)
 pte_t*
 select_a_victim(pde_t *pgdir)
 {
-  // for(int i=0; i<NPDENTRIES; i++) {
-  //   if((pgdir[i] & PTE_U) && (pgdir[i] & PTE_P))
-  //     return &pgdir[i];
-  // }
-  // return 0;
-  for(;;) {
-    int total_user_pages = 0;
-    for(int i=0; i<NPDENTRIES; i++) {
-      pde_t* pde = (pde_t *)pgdir[i];
-      if(*pde & PTE_P){
-        for(int j = 0; j < NPTENTRIES; j++){
-          pte_t* pte = (pte_t *)pde[j];
-          if((*pte & PTE_U) && (*pte & PTE_P)) {
-            total_user_pages += 1;
-            //if(!(*pte & PTE_A)) {
-              //cprintf("Victim: %x\n",P2V(PTE_ADDR(*pte)));
-              return pte;
-            //}
-          }
-        }
+  int total_pages = 0;
+  pte_t* pte;
+  for(int i=0; i<KERNBASE - PGSIZE; i+= PGSIZE) {
+    if((pte = walkpgdir(pgdir, (char*) i, 0)) != 0) {
+      total_pages += 1;
+      if((*pte & PTE_P) && !(*pte & PTE_A)) {
+        return pte;
       }
     }
-    
-    int reset = total_user_pages*0.1;
-    if(reset == 0)
-      reset = 1;
-
-    while(reset) {
-      clearaccessbit(pgdir);
-      reset--;
+  }
+  int reset = 0.1*total_pages;
+  if(reset == 0)
+    reset = 1;
+  
+  while(reset--) {
+    clearaccessbit(pgdir);
+  }
+  
+  for(int i=0; i<KERNBASE - PGSIZE; i+= PGSIZE) {
+    if((pte = walkpgdir(pgdir, (char*) i, 0)) != 0) {
+      if((*pte & PTE_P) && !(*pte & PTE_A)) {
+        return pte;
+      }
     }
   }
+  panic("select_a_victim: no user page present in PGDIR");
 }
 
 // Clear access bit of a random pte.
 void
 clearaccessbit(pde_t *pgdir)
-{
-  for(;;) {
-    for(int i=0; i<NPDENTRIES; i++) {
-      pde_t* pde = (pde_t *)pgdir[i];
-      if(*pde & PTE_P){
-        for(int j = 0; j < NPTENTRIES; j++){
-          pte_t* pte = (pte_t *)pde[j];
-          if((*pte & PTE_U) && (*pte & PTE_P)) {
-            *pte &= ~PTE_A;
-            return;
-          }
-        }
+{ 
+  pte_t* pte;
+  for(int i=0; i<KERNBASE - PGSIZE; i+= PGSIZE) {
+    if((pte = walkpgdir(pgdir, (char*) i, 0)) != 0) {
+      if((*pte & PTE_P) && (*pte & PTE_A)) {
+        *pte &= ~PTE_A;
+        return;
       }
     }
   }
-
-  // int cnt = 0;
-  // for(int i = 0; i < NPDENTRIES; i++) {
-  //   if((pgdir[i] & PTE_U) && (pgdir[i] & PTE_P))
-  //     cnt += 1;
-  // }
-  
-  // for(;;) {
-  //   int random_pg = ticks % cnt;
-  //   if((pgdir[random_pg] & PTE_A) && (pgdir[random_pg] & PTE_P)) {
-  //     pgdir[random_pg] &= ~PTE_A;
-  //     break;
-  //   }
-  // }
 }
 
 // return the disk block-id, if the virtual address

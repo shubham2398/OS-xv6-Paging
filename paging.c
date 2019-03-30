@@ -24,7 +24,6 @@ swap_page_from_pte(pte_t *pte)
   cprintf("writing page to disk\n");
 	write_page_to_disk(1, P2V(pa), bno);
   cprintf("hello1\n");
-  kfree(P2V(pa));
   cprintf("hello2\n");
   *pte = 0;
   *pte = bno<<12;
@@ -32,7 +31,10 @@ swap_page_from_pte(pte_t *pte)
   
   cprintf("page written successfully\n");
 
-  //lcr3(V2P(myproc()->pgdir));
+  asm volatile("invlpg (%0)"::"b"((unsigned long)(P2V(pa))):"memory");
+
+  // lcr3(V2P(myproc()->pgdir));
+  kfree(P2V(pa));
   cprintf("hello3\n");
 
   // char* v = P2V(KERNBASE);
@@ -47,7 +49,6 @@ swap_page(pde_t *pgdir)
 { 
   cprintf("Victim is going to be selected\n");
 	pte_t* pte= select_a_victim(pgdir);
-  cprintf("Victim selected\n");
   swap_page_from_pte(pte);
 	return 1;
 }
@@ -75,9 +76,11 @@ map_address(pde_t *pgdir, uint addr)
   memset(mem, 0, PGSIZE);
   uint bno;
   if((bno = getswappedblk(pgdir, addr)) != -1){
-    panic("trying to swap page back");
-    pte_t *pte = walkpgdir(pgdir, &addr, 0);
-    read_page_from_disk(1, P2V(PTE_ADDR(*pte)), bno);
+    cprintf("yyayyyyyy\n");
+    //panic("trying to swap page back");
+    // pte_t *pte = walkpgdir(pgdir, &addr, 0);
+    read_page_from_disk(1, mem, bno);
+    bfree_page(1,bno);
   }
   // addr = PGROUNDDOWN((uint)addr);
   // cprintf("exec\n");
