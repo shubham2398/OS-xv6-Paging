@@ -29,6 +29,7 @@ main(void)
   pinit();         // process table
   tvinit();        // trap vectors
   binit();         // buffer cache
+  pdinit();        // store page in disk
   fileinit();      // file table
   ideinit();       // disk 
   startothers();   // start other processors

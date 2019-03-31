@@ -26,7 +26,12 @@ static void itrunc(struct inode*);
 // there should be one superblock per disk device, but we run with
 // only one device
 struct superblock sb;
+struct sleeplock slock;
 int numallocblocks = 0;
+
+void pdinit(void) {
+  initsleeplock(&slock, "pageToDisk");
+}
 
 // Read the super block.
 void
@@ -85,13 +90,15 @@ balloc(uint dev)
  */
 uint
 balloc_page(uint dev)
-{ 
+{
+  acquiresleep(&slock);
   uint bno;
   bno = balloc(dev);
   for(int i=0;i<7;i++){
     if(balloc(dev)!=bno+i+1)
       panic("balloc_page: Unconsecutive pages allocated");
   }
+  releasesleep(&slock);
 	return bno;
 }
 
@@ -118,10 +125,12 @@ bfree(int dev, uint b)
  */
 void
 bfree_page(int dev, uint b)
-{ 
+{
+  acquiresleep(&slock);
   for(int i=0;i<8;i++){
     bfree(dev,b+i);
   }
+  releasesleep(&slock);
 }
 
 // Inodes.

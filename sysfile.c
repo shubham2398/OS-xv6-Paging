@@ -466,8 +466,8 @@ sys_swap(void)
   if(argint(0, (int*)&addr) < 0)
     return -1;
   pte_t* pte=walkpgdir(curproc->pgdir,(void *)addr,0);
-  if(pte==0)
-    panic("sys_swap:No page allocated at the given VA");
+  if(pte==0 || !(*pte & PTE_P))
+    return -1;
   swap_page_from_pte(pte);
   return 0;
 }

@@ -318,7 +318,7 @@ select_a_victim(pde_t *pgdir)
 {
   int total_pages = 0;
   pte_t* pte;
-  for(int i=0; i<KERNBASE - PGSIZE; i+= PGSIZE) {
+  for(int i=0; i<myproc()->sz; i+= PGSIZE) {
     if((pte = walkpgdir(pgdir, (char*) i, 0)) != 0) {
       if(*pte & PTE_P) total_pages += 1;
       if((*pte & PTE_P) && !(*pte & PTE_A)) {
@@ -334,7 +334,7 @@ select_a_victim(pde_t *pgdir)
     clearaccessbit(pgdir);
   }
   
-  for(int i=0; i<KERNBASE - PGSIZE; i+= PGSIZE) {
+  for(int i=0; i<myproc()->sz; i+= PGSIZE) {
     if((pte = walkpgdir(pgdir, (char*) i, 0)) != 0) {
       if((*pte & PTE_P) && !(*pte & PTE_A)) {
         return pte;
@@ -349,7 +349,7 @@ void
 clearaccessbit(pde_t *pgdir)
 { 
   pte_t* pte;
-  for(int i=0; i<KERNBASE - PGSIZE; i+= PGSIZE) {
+  for(int i=0; i<myproc()->sz; i+= PGSIZE) {
     if((pte = walkpgdir(pgdir, (char*) i, 0)) != 0) {
       if((*pte & PTE_P) && (*pte & PTE_A)) {
         *pte &= ~PTE_A;
@@ -367,8 +367,6 @@ getswappedblk(pde_t *pgdir, uint va)
   pte_t *pte;
   if((pte = walkpgdir(pgdir, (char*)va, 0))==0){
     return -1;
-    cprintf("va in getswappedblk %x\n", va);
-    panic("getswappedblk: address should be mapped");
   }
   else if((*pte) & PTE_S) {
     return (*pte)>>12;

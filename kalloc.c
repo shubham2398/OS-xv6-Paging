@@ -66,7 +66,6 @@ kfree(char *v)
 
   // Fill with junk to catch dangling refs.
   memset(v, 1, PGSIZE);
-  // cprintf("memset was successfull\n");
 
   if(kmem.use_lock)
     acquire(&kmem.lock);
