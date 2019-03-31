@@ -75,7 +75,6 @@ balloc(uint dev)
         log_write(bp);
         brelse(bp);
         bzero(dev, b + bi);
-        numallocblocks++;
         return b + bi;
       }
     }
@@ -98,6 +97,7 @@ balloc_page(uint dev)
     if(balloc(dev)!=bno+i+1)
       panic("balloc_page: Unconsecutive pages allocated");
   }
+  numallocblocks+=8;
   releasesleep(&slock);
 	return bno;
 }
@@ -118,7 +118,6 @@ bfree(int dev, uint b)
   bp->data[bi/8] &= ~m;
   log_write(bp);
   brelse(bp);
-  numallocblocks--;
 }
 
 /* Free disk blocks allocated using balloc_page.
@@ -130,6 +129,7 @@ bfree_page(int dev, uint b)
   for(int i=0;i<8;i++){
     bfree(dev,b+i);
   }
+  numallocblocks-=8;
   releasesleep(&slock);
 }
 

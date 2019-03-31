@@ -452,7 +452,7 @@ sys_pipe(void)
 int
 sys_bstat(void)
 {
-	return numallocblocks;
+	return numallocblocks/8;
 }
 
 /* swap system call handler.
